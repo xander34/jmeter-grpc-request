@@ -16,8 +16,8 @@ public class ClientList {
 
     private static final Map<String, ServiceResolver> serviceResolverMap = new HashMap<>();
 
-    public static ServiceResolver getServiceResolver(String protoFile, String libFolder) {
-        return getServiceResolver(protoFile, libFolder, false);
+    public static ServiceResolver getServiceResolver(String protoFile, String libFolder, String protocVersion) {
+        return getServiceResolver(protoFile, libFolder, false, protocVersion);
     }
 
     /**
@@ -28,7 +28,7 @@ public class ClientList {
      * @param reload    reload not cache
      * @return proto file resolver
      */
-    public static ServiceResolver getServiceResolver(String protoFile, String libFolder, boolean reload) {
+    public static ServiceResolver getServiceResolver(String protoFile, String libFolder, boolean reload, String protocVersion) {
         try {
             String serviceResolverKey = protoFile + libFolder;
             if (reload == false) {
@@ -40,7 +40,7 @@ public class ClientList {
 
             if (StringUtils.isNotBlank(protoFile)) {
                 final DescriptorProtos.FileDescriptorSet fileDescriptorSet;
-                ProtocInvoker invoker = ProtocInvoker.forConfig(protoFile, libFolder);
+                ProtocInvoker invoker = ProtocInvoker.forConfig(protoFile, libFolder, protocVersion);
                 fileDescriptorSet = invoker.invoke();
 
                 ServiceResolver serviceResolver = ServiceResolver.fromFileDescriptorSet(fileDescriptorSet);
@@ -65,8 +65,8 @@ public class ClientList {
         return methods;
     }
 
-    public static List<String> listServices(String protoFile, String libFolder) {
-        return listServices(getServiceResolver(protoFile, libFolder, true));
+    public static List<String> listServices(String protoFile, String libFolder, String protocVersion) {
+        return listServices(getServiceResolver(protoFile, libFolder, true, protocVersion));
     }
 
 }

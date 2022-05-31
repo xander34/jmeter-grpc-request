@@ -61,6 +61,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
     private JLabeledTextField hostField;
     private JLabeledTextField portField;
     private JLabeledTextField deadlineField;
+    private JLabeledTextField protocVersionField;
 
     private JCheckBox isTLSCheckBox;
     private JCheckBox isTLSDisableVerificationCheckBox;
@@ -104,6 +105,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
         grpcSampler.setPort(this.portField.getText());
         grpcSampler.setFullMethod(this.fullMethodField.getSelectedItem().toString());
         grpcSampler.setDeadline(this.deadlineField.getText());
+        grpcSampler.setProtocVersion(this.protocVersionField.getText());
         grpcSampler.setTls(this.isTLSCheckBox.isSelected());
         grpcSampler.setTlsDisableVerification(this.isTLSDisableVerificationCheckBox.isSelected());
         grpcSampler.setRequestJson(this.requestJsonArea.getText());
@@ -119,6 +121,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
         protoFolderField.setText(grpcSampler.getProtoFolder());
         libFolderField.setText(grpcSampler.getLibFolder());
         metadataField.setText(grpcSampler.getMetadata());
+        protocVersionField.setText(grpcSampler.getProtocVersion());
         hostField.setText(grpcSampler.getHost());
         portField.setText(grpcSampler.getPort());
         fullMethodField.setSelectedItem(grpcSampler.getFullMethod());
@@ -138,6 +141,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
         protoFolderField.setText("");
         libFolderField.setText("");
         metadataField.setText("");
+        protocVersionField.setText("");
         hostField.setText("");
         portField.setText("");
         fullMethodField.setSelectedItem("");
@@ -221,6 +225,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
         JLabel metadataLabel = new JLabel("Metadata:");
         metadataField = new JTextField("Metadata", 32); // $NON-NLS-1$
         deadlineField = new JLabeledTextField("Deadline:", 7); // $NON-NLS-1$
+        protocVersionField = new JLabeledTextField("Protoc Version:", 4);
 
         JPanel webServerPanel = new HorizontalPanel();
         webServerPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -230,6 +235,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
         webServerPanel.add(metadataLabel);
         webServerPanel.add(metadataField);
         webServerPanel.add(deadlineField);
+        webServerPanel.add(protocVersionField);
         return webServerPanel;
     }
 
@@ -362,7 +368,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
     private String[] getProtoMethods(boolean reload) {
         if (StringUtils.isNotBlank(grpcSampler.getProtoFolder()) && (ArrayUtils.isEmpty(protoMethods) || reload == true)) {
             JMeterVariableUtils.undoVariableReplacement(grpcSampler);
-            ServiceResolver serviceResolver = ClientList.getServiceResolver(grpcSampler.getProtoFolder(), grpcSampler.getLibFolder(), reload);
+            ServiceResolver serviceResolver = ClientList.getServiceResolver(grpcSampler.getProtoFolder(), grpcSampler.getLibFolder(), reload, grpcSampler.getProtocVersion());
             List<String> methodList = ClientList.listServices(serviceResolver);
             protoMethods = new String[methodList.size()];
             methodList.toArray(protoMethods);
@@ -382,7 +388,7 @@ public class GRPCSamplerGui extends AbstractSamplerGui {
             String fullMethod = fullMethodField.getSelectedItem().toString();
             ProtoMethodName grpcMethodName = ProtoMethodName.parseFullGrpcMethodName(fullMethod);
             JMeterVariableUtils.undoVariableReplacement(grpcSampler);
-            ServiceResolver serviceResolver = ClientList.getServiceResolver(grpcSampler.getProtoFolder(), grpcSampler.getLibFolder());
+            ServiceResolver serviceResolver = ClientList.getServiceResolver(grpcSampler.getProtoFolder(), grpcSampler.getLibFolder(), grpcSampler.getProtocVersion());
             Descriptors.MethodDescriptor methodDescriptor = serviceResolver.resolveServiceMethod(grpcMethodName);
             if (methodDescriptor != null) {
                 Descriptors.Descriptor inputType = methodDescriptor.getInputType();

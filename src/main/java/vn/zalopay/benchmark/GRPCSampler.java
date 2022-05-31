@@ -26,6 +26,7 @@ public class GRPCSampler extends AbstractSampler implements ThreadListener {
     public static final String DEADLINE = "GRPCSampler.deadline";
     public static final String TLS = "GRPCSampler.tls";
     public static final String TLS_DISABLE_VERIFICATION = "GRPCSampler.tlsDisableVerification";
+    public static final String PROTOC_VERSION = "GRPCSampler.protocVersion";
     private transient ClientCaller clientCaller = null;
 
     public GRPCSampler() {
@@ -53,7 +54,8 @@ public class GRPCSampler extends AbstractSampler implements ThreadListener {
                     getLibFolder(),
                     getFullMethod(),
                     isTls(),
-                    isTlsDisableVerification());
+                    isTlsDisableVerification(),
+                    getProtocVersion());
         }
     }
 
@@ -126,6 +128,16 @@ public class GRPCSampler extends AbstractSampler implements ThreadListener {
     /**
      * GETTER AND SETTER
      */
+
+    public String getProtocVersion() {
+        return getPropertyAsString(PROTOC_VERSION);
+    }
+
+    public void setProtocVersion(String protocVersion) {
+        setProperty(PROTOC_VERSION, protocVersion);
+    }
+
+
     public String getMetadata() {
         return getPropertyAsString(METADATA);
     }

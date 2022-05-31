@@ -5,16 +5,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
+import org.apache.commons.lang.StringUtils;
 import org.apache.jmeter.services.FileServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.*;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,30 +24,40 @@ public class ProtocInvoker {
     private static final Logger logger = LoggerFactory.getLogger(ProtocInvoker.class);
     private static final PathMatcher PROTO_MATCHER =
             FileSystems.getDefault().getPathMatcher("glob:**/*.proto");
-
+    public static final String DEFAULT_PROTOC_VERSION = "3.20.1";
     private final ImmutableList<Path> protocIncludePaths;
     private final Path discoveryRoot;
     private final int largeFolderLimit = 100;
+    private final String protocVersion;
+    private String descriptorFileName;
+
 
     /**
      * Takes an optional path to pass to protoc as --proto_path. Uses the invocation-time proto root
      * if none is passed.
      */
-    private ProtocInvoker(Path discoveryRoot, ImmutableList<Path> protocIncludePaths) {
+    private ProtocInvoker(Path discoveryRoot, ImmutableList<Path> protocIncludePaths, String protocVersion, String descriptorFileName) {
         this.protocIncludePaths = protocIncludePaths;
         this.discoveryRoot = discoveryRoot;
+        this.protocVersion = (isBlank(protocVersion)) ? DEFAULT_PROTOC_VERSION : protocVersion;
+        this.descriptorFileName = descriptorFileName;
     }
 
     /**
      * Creates a new {@link ProtocInvoker} with the supplied configuration.
      */
-    public static ProtocInvoker forConfig(String protoDiscoveryRoot, String libFolder) {
+    public static ProtocInvoker forConfig(String protoDiscoveryRoot, String libFolder, String protocVersion) {
+
+        ImmutableList.Builder<Path> includePaths = ImmutableList.builder();
+
+        if (protoDiscoveryRoot.trim().endsWith(".bin")) {
+            return new ProtocInvoker(null, includePaths.build(), protocVersion, protoDiscoveryRoot);
+        }
+
         Path discoveryRootPath = Paths.get(protoDiscoveryRoot);
         if (!discoveryRootPath.isAbsolute()) {
             discoveryRootPath = Paths.get(FileServer.getFileServer().getBaseDir(), protoDiscoveryRoot);
         }
-
-        ImmutableList.Builder<Path> includePaths = ImmutableList.builder();
 
         List<String> includePathsList = getProtocIncludes(libFolder);
 
@@ -62,14 +70,24 @@ public class ProtocInvoker {
             includePaths.add(path.toAbsolutePath());
         }
 
-        return new ProtocInvoker(discoveryRootPath, includePaths.build());
+        return new ProtocInvoker(discoveryRootPath, includePaths.build(), protocVersion, "");
     }
+
 
     /**
      * Executes protoc on all .proto files in the subtree rooted at the supplied path and returns a
      * {@link FileDescriptorSet} which describes all the protos.
      */
     public FileDescriptorSet invoke() throws ProtocInvocationException {
+
+        if (!isBlank(descriptorFileName)) {
+            try {
+                return FileDescriptorSet.parseFrom(Files.readAllBytes(Paths.get(descriptorFileName)));
+            } catch (IOException e) {
+                throw new ProtocInvocationException("Unable to parse the ENV provided descriptor", e);
+            }
+        }
+
         Path wellKnownTypesInclude;
         Path googleTypesInclude;
         try {
@@ -89,10 +107,13 @@ public class ProtocInvoker {
         final ImmutableSet<String> protoFilePaths = scanProtoFiles(discoveryRoot);
         ImmutableList<String> protocArgs = null;
 
+        logger.debug("protoc version: " + protocVersion + ", descriptor file: " + descriptorFileName + ", descriptor path: " + descriptorPath.toAbsolutePath());
+
         if (protoFilePaths.size() > largeFolderLimit) {
             try {
                 File argumentsFile = createFileWithArguments(protoFilePaths.toArray(new String[0]));
                 protocArgs = ImmutableList.<String>builder()
+                        .add("-v" + protocVersion)
                         .add("@" + argumentsFile.getAbsolutePath())
                         .addAll(includePathArgs(wellKnownTypesInclude))
                         .add("--descriptor_set_out=" + descriptorPath.toAbsolutePath().toString())
@@ -105,6 +126,7 @@ public class ProtocInvoker {
 
         if (protocArgs == null) {
             protocArgs = ImmutableList.<String>builder()
+                    .add("-v" + protocVersion)
                     .addAll(protoFilePaths)
                     .addAll(includePathArgs(wellKnownTypesInclude))
                     .add("--descriptor_set_out=" + descriptorPath.toAbsolutePath().toString())
@@ -226,6 +248,11 @@ public class ProtocInvoker {
         return protocIncludes;
     }
 
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().length() == 0;
+    }
+
     /**
      * Extracts the .proto files for the well-known-types into a directory and returns a proto
      * include path which can be used to point protoc to the files.
@@ -245,6 +272,7 @@ public class ProtocInvoker {
      * An error indicating that something went wrong while invoking protoc.
      */
     public class ProtocInvocationException extends Exception {
+
         private static final long serialVersionUID = 1L;
 
         private ProtocInvocationException(String message) {

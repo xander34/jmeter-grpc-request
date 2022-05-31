@@ -42,11 +42,11 @@ public class ClientCaller {
     private boolean disableTtlVerification;
     ChannelFactory channelFactory;
 
-    public ClientCaller(String HOST_PORT, String TEST_PROTO_FILES, String LIB_FOLDER, String FULL_METHOD, boolean TLS, boolean TLS_DISABLE_VERIFICATION) {
-        this.init(HOST_PORT, TEST_PROTO_FILES, LIB_FOLDER, FULL_METHOD, TLS, TLS_DISABLE_VERIFICATION);
+    public ClientCaller(String HOST_PORT, String TEST_PROTO_FILES, String LIB_FOLDER, String FULL_METHOD, boolean TLS, boolean TLS_DISABLE_VERIFICATION, String PROTOC_VERSION) {
+        this.init(HOST_PORT, TEST_PROTO_FILES, LIB_FOLDER, FULL_METHOD, TLS, TLS_DISABLE_VERIFICATION, PROTOC_VERSION);
     }
 
-    private void init(String HOST_PORT, String TEST_PROTO_FILES, String LIB_FOLDER, String FULL_METHOD, boolean TLS, boolean TLS_DISABLE_VERIFICATION) {
+    private void init(String HOST_PORT, String TEST_PROTO_FILES, String LIB_FOLDER, String FULL_METHOD, boolean TLS, boolean TLS_DISABLE_VERIFICATION, String PROTOC_VERSION) {
         try {
             tls = TLS;
             disableTtlVerification = TLS_DISABLE_VERIFICATION;
@@ -60,7 +60,7 @@ public class ClientCaller {
             final DescriptorProtos.FileDescriptorSet fileDescriptorSet;
 
             try {
-                fileDescriptorSet = ProtocInvoker.forConfig(TEST_PROTO_FILES, LIB_FOLDER).invoke();
+                fileDescriptorSet = ProtocInvoker.forConfig(TEST_PROTO_FILES, LIB_FOLDER, PROTOC_VERSION).invoke();
             } catch (Throwable t) {
                 shutdownNettyChannel();
                 throw new RuntimeException("Unable to resolve service by invoking protoc", t);
